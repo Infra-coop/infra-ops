@@ -1,0 +1,29 @@
+name: Deploy
+
+# GitOps: a reviewed merge to main is the deploy trigger. The box just reflects
+# main. Runs ONLY on push to main — never on PRs — so fork contributors can open
+# PRs freely without ever gaining access to deploy secrets.
+on:
+  push:
+    branches: [main]
+
+# Never let two deploys overlap on the box.
+concurrency: deploy-services-host
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull latest and roll the stack
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/infra-coop
+            git pull --ff-only
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f

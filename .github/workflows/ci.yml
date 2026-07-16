@@ -1,0 +1,19 @@
+name: CI
+
+# Runs on every PR (including from forks) and on main. No secrets are used here,
+# so it is safe for anyone to trigger by opening a PR. Deploy is a separate
+# workflow that only runs after a reviewed merge to main.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file
+        # .env.example supplies placeholder values so interpolation resolves;
+        # this catches syntax errors and references to undefined variables.
+        run: docker compose --env-file .env.example config --quiet

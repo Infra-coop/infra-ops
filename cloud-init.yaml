@@ -1,0 +1,49 @@
+#cloud-config
+# Provisions a bare Hetzner (or any cloud) VPS into an infra.coop services host:
+# Docker + a locked-down firewall + a `deploy` user that CI SSHes in as to run
+# `git pull && docker compose up -d` on merges to main.
+#
+# Pass this as the server's user-data at create time. It gets the box to the
+# point where the one-time first-run in the README (clone repo, fill .env,
+# first `up`) can happen; everything after that is GitOps.
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ufw
+  - ca-certificates
+  - curl
+  - git
+
+users:
+  - default
+  - name: deploy
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      # The CI deploy key's PUBLIC half. Replace before boot (or add later with
+      # `ssh-copy-id`). The matching private key goes in the ops repo's GitHub
+      # Actions secrets, never in git.
+      - REPLACE_WITH_CI_DEPLOY_PUBLIC_KEY
+
+runcmd:
+  # Docker Engine + Compose plugin.
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker deploy
+  - systemctl enable --now docker
+
+  # Firewall: SSH + HTTP(S) only. Backends are never published directly.
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow OpenSSH
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+
+  # Stack lives here, owned by the deploy user.
+  - mkdir -p /opt/infra-coop
+  - chown -R deploy:deploy /opt/infra-coop
+
+final_message: "infra.coop services host provisioned. Do the one-time first-run from the ops README, then GitOps takes over."
