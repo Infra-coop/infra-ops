@@ -3,8 +3,9 @@
 **Shared services host for the infra.coop cooperative.**
 
 A single Docker VPS running a reverse proxy (Traefik) in front of the co-op's
-lightweight, stateless backend services. Provisioned reproducibly from a
-`cloud-init` file. The first tenant is **imgproxy**, the transform engine behind
+lightweight, stateless backend services. Runs on an existing Docker host
+(a DigitalOcean droplet); a `cloud-init` file reproduces the box from scratch when
+needed. The first tenant is **imgproxy**, the transform engine behind
 [img.infra.coop](../img-infra-coop).
 
 ```
@@ -90,8 +91,14 @@ One-time, by hand. Everything after this is GitOps.
    ssh-keygen -t ed25519 -C infra-ops-ci -f ci_deploy -N ""
    # ci_deploy.pub  → cloud-init authorized_keys ;  ci_deploy → GH secret (step 6)
    ```
-2. **Create the box** with `cloud-init.yaml` as user-data. Point DNS:
-   `imgproxy.infra.coop` A record → box IP.
+2. **Prep the host**, then point DNS `imgproxy.infra.coop` A record → box IP.
+   - **Existing Docker host** (current target — a DigitalOcean droplet with Docker
+     already installed): skip cloud-init and run the root-side prep:
+     ```bash
+     sudo ./scripts/host-setup.sh ci_deploy.pub
+     ```
+   - **Fresh box:** create it with `cloud-init.yaml` as user-data (Keypair A public half
+     already pasted into it); Docker, the `deploy` user, and a firewall come up with it.
 3. **Keypair B** — on the box, as `deploy`, make the GitHub read key and add
    `~/.ssh/id_ed25519.pub` to the repo's **Deploy keys** (read-only):
    ```bash
@@ -120,10 +127,11 @@ One-time, by hand. Everything after this is GitOps.
 
 ## Status
 
-🚧 **Stack written, not yet deployed.** Traefik + imgproxy Compose stack, `cloud-init`
-provisioning, key-gen helper, and GitOps CI/deploy workflows are in place; remote is
-`git@github.com:Infra-coop/infra-ops.git` (private). Next: provision a box and run the
-first-run runbook.
+🚧 **Stack written, not yet deployed.** Traefik + imgproxy Compose stack, host prep
+(`host-setup.sh` for the existing droplet; `cloud-init.yaml` for a fresh box), key-gen
+helper, and GitOps CI/deploy workflows are in place; remote is
+`git@github.com:Infra-coop/infra-ops.git` (private). Target is an existing DigitalOcean
+Docker droplet, ports 80/443 free. Next: run the first-run runbook on it.
 
 ## License
 
