@@ -65,28 +65,50 @@ fork / branch → PR ──▶ CI (compose validate)      ← no secrets; safe f
   never exposes deploy secrets to fork PRs, so "anyone can PR to prod" is true *and* safe:
   the gate is code review, not access to the box.
 
+### The two keypairs
+
+CI/CD needs SSH in two directions — keep them straight:
+
+| | Keypair A — **CI → box** | Keypair B — **box → GitHub** (read) |
+|---|---|---|
+| Why | deploy workflow SSHes into the box | box clones/pulls this **private** repo |
+| Private half | GitHub Actions secret `DEPLOY_SSH_KEY` | on the box: `~deploy/.ssh/id_ed25519` |
+| Public half | `cloud-init.yaml` `authorized_keys` (committed — public is fine) | repo **Settings → Deploy keys** (read-only) |
+| Generated | anywhere, once | **on the box** during first-run (private half never leaves it) |
+
 Required GitHub Actions secrets: `DEPLOY_HOST` (box IP/hostname) and `DEPLOY_SSH_KEY`
-(private half of the `deploy` user's key). Enable branch protection on `main` with a
-required review + required `CI` check.
+(Keypair A private half). Enable branch protection on `main` with a required review + the
+required `CI` check.
 
 ## First-run runbook
 
 One-time, by hand. Everything after this is GitOps.
 
-1. **Create the box** with `cloud-init.yaml` as user-data (put the CI deploy key's
-   **public** half in it first). Point DNS: `imgproxy.infra.coop` A record → box IP.
-2. **Generate signing keys** and install them on both sides:
+1. **Keypair A** — generate the CI→box key, put its **public** half in `cloud-init.yaml`,
+   and stash the private half for step 6:
    ```bash
-   ./scripts/gen-keys.sh   # prints IMGPROXY_KEY / IMGPROXY_SALT + the wrangler commands
+   ssh-keygen -t ed25519 -C infra-ops-ci -f ci_deploy -N ""
+   # ci_deploy.pub  → cloud-init authorized_keys ;  ci_deploy → GH secret (step 6)
    ```
-3. **On the box**, as the `deploy` user:
+2. **Create the box** with `cloud-init.yaml` as user-data. Point DNS:
+   `imgproxy.infra.coop` A record → box IP.
+3. **Keypair B** — on the box, as `deploy`, make the GitHub read key and add
+   `~/.ssh/id_ed25519.pub` to the repo's **Deploy keys** (read-only):
    ```bash
-   git clone <this-repo> /opt/infra-coop && cd /opt/infra-coop
-   cp .env.example .env      # fill ACME_EMAIL, IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
+   ssh-keygen -t ed25519 -C infra-ops-box -f ~/.ssh/id_ed25519 -N ""
+   cat ~/.ssh/id_ed25519.pub   # paste into GitHub → repo → Settings → Deploy keys
+   ```
+4. **Signing keys** — generate the shared imgproxy key/salt (also installs the Worker
+   secrets): `./scripts/gen-keys.sh`.
+5. **Clone + start**, still as `deploy`:
+   ```bash
+   git clone git@github.com:Infra-coop/infra-ops.git /opt/infra-coop && cd /opt/infra-coop
+   cp .env.example .env     # fill ACME_EMAIL, IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
    docker compose up -d
    ```
-4. **Add the GitHub secrets** (`DEPLOY_HOST`, `DEPLOY_SSH_KEY`) and turn on branch
-   protection. From here, merges to `main` deploy automatically.
+6. **GitHub secrets + protection** — add `DEPLOY_HOST` (box IP) and `DEPLOY_SSH_KEY`
+   (Keypair A private half), then turn on `main` branch protection. From here, merges to
+   `main` deploy automatically.
 
 ## Adding a service
 
@@ -99,8 +121,9 @@ One-time, by hand. Everything after this is GitOps.
 ## Status
 
 🚧 **Stack written, not yet deployed.** Traefik + imgproxy Compose stack, `cloud-init`
-provisioning, key-gen helper, and GitOps CI/deploy workflows are in place. Blocked on:
-GitHub remotes for the repos, then a real box to run the first deploy against.
+provisioning, key-gen helper, and GitOps CI/deploy workflows are in place; remote is
+`git@github.com:Infra-coop/infra-ops.git` (private). Next: provision a box and run the
+first-run runbook.
 
 ## License
 

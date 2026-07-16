@@ -23,9 +23,9 @@ users:
     shell: /bin/bash
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     ssh_authorized_keys:
-      # The CI deploy key's PUBLIC half. Replace before boot (or add later with
-      # `ssh-copy-id`). The matching private key goes in the ops repo's GitHub
-      # Actions secrets, never in git.
+      # KEYPAIR A (CI -> box). This is the PUBLIC half; it is safe to commit.
+      # The matching PRIVATE half goes in the repo's Actions secret DEPLOY_SSH_KEY.
+      # Lets the deploy workflow SSH in as `deploy`. Replace before boot.
       - REPLACE_WITH_CI_DEPLOY_PUBLIC_KEY
 
 runcmd:
@@ -42,8 +42,18 @@ runcmd:
   - ufw allow 443/tcp
   - ufw --force enable
 
+  # Trust github.com so the first `git clone` doesn't prompt on host verification.
+  - install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+  - sh -c 'ssh-keyscan github.com > /home/deploy/.ssh/known_hosts'
+  - chown deploy:deploy /home/deploy/.ssh/known_hosts
+
   # Stack lives here, owned by the deploy user.
   - mkdir -p /opt/infra-coop
   - chown -R deploy:deploy /opt/infra-coop
+
+# KEYPAIR B (box -> GitHub, read-only) can't live here — its PRIVATE half must
+# never be committed. It's generated ON the box during first-run and its PUBLIC
+# half is added as a read-only Deploy Key on the repo, so the box can clone/pull
+# the private repo. See the ops README first-run runbook.
 
 final_message: "infra.coop services host provisioned. Do the one-time first-run from the ops README, then GitOps takes over."
