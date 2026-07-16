@@ -1,0 +1,11 @@
+# Real secrets and generated TLS material never get committed.
+.env
+*.env
+!*.env.example
+letsencrypt/
+acme.json
+*.pem
+
+.DS_Store
+.idea/
+.vscode/
