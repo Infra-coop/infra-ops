@@ -1,4 +1,4 @@
-name: infra-coop
+name: co-infra
 
 # Shared services host. Traefik terminates TLS and routes by Host header to
 # backend containers. Add a service = add a container + the four traefik labels.
@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     environment:
       IMGPROXY_BIND: ":8080"
-      # Signed-URL keys — MUST match the img-infra-coop Worker's secrets.
+      # Signed-URL keys — MUST match the co-infra-img Worker's secrets.
       IMGPROXY_KEY: ${IMGPROXY_KEY}
       IMGPROXY_SALT: ${IMGPROXY_SALT}
       # SSRF defense-in-depth: only ever fetch https origins (PDSes).

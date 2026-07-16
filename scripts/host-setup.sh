@@ -12,7 +12,7 @@ set -euo pipefail
 
 CI_PUBKEY="${1:?usage: sudo ./scripts/host-setup.sh <ci_deploy.pub>}"
 DEPLOY_USER=deploy
-STACK_DIR=/opt/infra-coop
+STACK_DIR=/opt/co-infra
 
 [ -f "$CI_PUBKEY" ] || { echo "public key not found: $CI_PUBKEY" >&2; exit 1; }
 command -v docker >/dev/null || { echo "docker not found — this script assumes Docker is already installed" >&2; exit 1; }
@@ -38,7 +38,7 @@ cat <<EOF
 Host prep done. Next, as the deploy user (repo is public — clone over HTTPS, no key):
 
   sudo -iu $DEPLOY_USER
-  git clone https://github.com/Infra-coop/infra-ops.git $STACK_DIR && cd $STACK_DIR
+  git clone https://github.com/co-infra/co-infra-ops.git $STACK_DIR && cd $STACK_DIR
   ./scripts/gen-keys.sh        # prints IMGPROXY_KEY / IMGPROXY_SALT + Worker secret cmds
   cp .env.example .env         # fill ACME_EMAIL, IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
   docker compose up -d

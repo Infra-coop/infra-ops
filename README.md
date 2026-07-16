@@ -1,12 +1,12 @@
-# infra-coop-ops
+# co-infra-ops
 
-**Shared services host for the infra.coop cooperative.**
+**Shared services host for the co/infra cooperative.**
 
 A single Docker VPS running a reverse proxy (Traefik) in front of the co-op's
 lightweight, stateless backend services. Runs on an existing Docker host
 (a DigitalOcean droplet); a `cloud-init` file reproduces the box from scratch when
 needed. The first tenant is **imgproxy**, the transform engine behind
-[img.infra.coop](../img-infra-coop).
+[img.infra.coop](../co-infra-img).
 
 ```
         Hetzner VPS  (services.infra.coop)
@@ -44,7 +44,7 @@ later.
 | Service | Subdomain | Purpose | Repo |
 |---------|-----------|---------|------|
 | Traefik | — | TLS + host routing | this repo |
-| imgproxy | `imgproxy.infra.coop` | image transform for the CDN | this repo · consumed by [img-infra-coop](../img-infra-coop) |
+| imgproxy | `imgproxy.infra.coop` | image transform for the CDN | this repo · consumed by [co-infra-img](../co-infra-img) |
 
 ## GitOps: how deploys happen
 
@@ -89,7 +89,7 @@ One-time, by hand. Everything after this is GitOps.
 
 1. **Deploy key** — generate the CI→box key; stash the private half for step 5:
    ```bash
-   ssh-keygen -t ed25519 -C infra-ops-ci -f ci_deploy -N ""
+   ssh-keygen -t ed25519 -C co-infra-ops-ci -f ci_deploy -N ""
    # ci_deploy.pub → the box (step 2) ;  ci_deploy → GH secret (step 5)
    ```
 2. **Prep the host**, then point DNS `imgproxy.infra.coop` A record → box IP.
@@ -106,7 +106,7 @@ One-time, by hand. Everything after this is GitOps.
    commands): `./scripts/gen-keys.sh`.
 4. **Clone + start**, as `deploy` (public repo → HTTPS, no key):
    ```bash
-   git clone https://github.com/Infra-coop/infra-ops.git /opt/infra-coop && cd /opt/infra-coop
+   git clone https://github.com/co-infra/co-infra-ops.git /opt/co-infra && cd /opt/co-infra
    cp .env.example .env     # fill ACME_EMAIL, IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
    docker compose up -d
    ```
@@ -127,7 +127,7 @@ One-time, by hand. Everything after this is GitOps.
 🚧 **Stack written, not yet deployed.** Traefik + imgproxy Compose stack, host prep
 (`host-setup.sh` for the existing droplet; `cloud-init.yaml` for a fresh box), key-gen
 helper, and GitOps CI/deploy workflows are in place; repo is **public** at
-`github.com/Infra-coop/infra-ops` (box pulls over HTTPS). Target is an existing
+`github.com/co-infra/co-infra-ops` (box pulls over HTTPS). Target is an existing
 DigitalOcean Docker droplet, ports 80/443 free. Next: run the first-run runbook on it.
 
 ## License

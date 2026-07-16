@@ -13,12 +13,12 @@ Generated imgproxy signing material (hex):
   IMGPROXY_KEY=$KEY
   IMGPROXY_SALT=$SALT
 
-1) On the services host — put these in infra-coop-ops/.env:
+1) On the services host — put these in co-infra-ops/.env:
 
   IMGPROXY_KEY=$KEY
   IMGPROXY_SALT=$SALT
 
-2) In the img-infra-coop Worker — set the matching secrets:
+2) In the co-infra-img Worker — set the matching secrets:
 
   echo "$KEY"  | wrangler secret put IMGPROXY_KEY
   echo "$SALT" | wrangler secret put IMGPROXY_SALT

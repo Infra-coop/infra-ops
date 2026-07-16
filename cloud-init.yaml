@@ -43,8 +43,8 @@ runcmd:
   - ufw --force enable
 
   # Stack lives here, owned by the deploy user.
-  - mkdir -p /opt/infra-coop
-  - chown -R deploy:deploy /opt/infra-coop
+  - mkdir -p /opt/co-infra
+  - chown -R deploy:deploy /opt/co-infra
 
 # The repo is public, so the box clones/pulls over HTTPS with no key of its own —
 # no GitHub deploy key needed. See the ops README first-run runbook.

@@ -22,7 +22,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd /opt/infra-coop
+            cd /opt/co-infra
             git pull --ff-only
             docker compose pull
             docker compose up -d --remove-orphans
