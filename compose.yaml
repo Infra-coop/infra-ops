@@ -10,12 +10,12 @@ networks:
 
 services:
   traefik:
-    image: traefik:v3.3
+    # Must be a build whose Docker client speaks API >= 1.40 — this droplet's
+    # daemon (Engine 29, API 1.55) rejects the older 1.24 that Traefik v3.3 sent,
+    # which left the Docker provider dead and no routers loading. Rolling v3 tag
+    # to pick up the fix; pin to an exact version once confirmed working.
+    image: traefik:v3
     restart: unless-stopped
-    environment:
-      # The droplet's Docker daemon requires API >= 1.40. Without this Traefik's
-      # client defaults to 1.24, the daemon rejects it, and no routers ever load.
-      - DOCKER_API_VERSION=1.40
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
