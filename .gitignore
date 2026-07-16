@@ -2,9 +2,12 @@
 .env
 *.env
 !*.env.example
+certs/
 letsencrypt/
 acme.json
 *.pem
+*.crt
+*.key
 
 .DS_Store
 .idea/

@@ -1,0 +1,14 @@
+# Traefik dynamic config: serve the Cloudflare Origin Certificate as the default
+# cert on every TLS request. Cloudflare terminates the public TLS with its own
+# cert; this secures the Cloudflare -> origin hop (requires SSL mode "Full
+# (strict)" so CF validates it). The cert covers *.infra.coop.
+#
+# The cert + key live in ./certs on the box and are NOT committed (the key is
+# secret). Generate them in the CF dashboard: SSL/TLS -> Origin Server ->
+# Create Certificate.
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/origin.crt
+        keyFile: /certs/origin.key

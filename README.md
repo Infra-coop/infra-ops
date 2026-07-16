@@ -11,7 +11,7 @@ needed. The first tenant is **imgproxy**, the transform engine behind
 ```
         Hetzner VPS  (services.infra.coop)
         ┌───────────────────────────────────────────────────┐
- 443 ──▶│ Traefik   (auto-TLS, routes by Host header)       │
+ 443 ──▶│ Traefik   (CF origin cert, routes by Host header) │
         │   ├─ imgproxy.infra.coop → imgproxy  [CPU-capped] │
         │   ├─ (later) label.infra.coop → labeler           │
         │   └─ …                                            │
@@ -87,12 +87,12 @@ public repo this review *is* the deploy gate.
 
 One-time, by hand. Everything after this is GitOps.
 
-1. **Deploy key** — generate the CI→box key; stash the private half for step 5:
+1. **Deploy key** — generate the CI→box key; stash the private half for step 6:
    ```bash
    ssh-keygen -t ed25519 -C co-infra-ops-ci -f ci_deploy -N ""
-   # ci_deploy.pub → the box (step 2) ;  ci_deploy → GH secret (step 5)
+   # ci_deploy.pub → the box (step 2) ;  ci_deploy → GH secret (step 6)
    ```
-2. **Prep the host**, then point DNS `imgproxy.infra.coop` A record → box IP.
+2. **Prep the host** (DNS + TLS come in step 5):
    - **Existing Docker host** (current target — a DigitalOcean droplet with Docker
      already installed): skip cloud-init and run the root-side prep, passing the deploy
      key's public half:
@@ -104,22 +104,43 @@ One-time, by hand. Everything after this is GitOps.
      half pasted into it); Docker, the `deploy` user, and a firewall come up with it.
 3. **Signing keys** — generate the shared imgproxy key/salt (also prints the Worker secret
    commands): `./scripts/gen-keys.sh`.
-4. **Clone + start**, as `deploy` (public repo → HTTPS, no key):
+4. **Clone + configure**, as `deploy` (public repo → HTTPS, no key). Don't start yet:
    ```bash
    git clone https://github.com/co-infra/co-infra-ops.git /opt/co-infra && cd /opt/co-infra
-   cp .env.example .env     # fill ACME_EMAIL, IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
-   docker compose up -d
+   cp .env.example .env     # fill IMGPROXY_DOMAIN, IMGPROXY_KEY, IMGPROXY_SALT
    ```
-5. **GitHub secrets + protection** — add `DEPLOY_HOST` (box IP) and `DEPLOY_SSH_KEY`
+5. **DNS + TLS (Cloudflare-proxied).** On the co/infra Cloudflare account, `infra.coop` zone:
+   - **DNS:** `imgproxy.infra.coop` A → box IP, **Proxied (orange cloud)**.
+   - **Origin cert:** SSL/TLS → Origin Server → Create Certificate (default `*.infra.coop`
+     covers every service). On the box, drop the two PEMs in place — the key is
+     gitignored, never committed:
+     ```bash
+     mkdir -p /opt/co-infra/certs
+     # paste the Origin Certificate → certs/origin.crt
+     # paste the Private Key        → certs/origin.key
+     chmod 600 /opt/co-infra/certs/origin.key
+     ```
+   - **SSL mode:** SSL/TLS → Overview → **Full (strict)**.
+
+   Cloudflare terminates the public TLS; Traefik serves this origin cert (`dynamic/tls.yml`)
+   for the CF→origin hop. No Let's Encrypt.
+6. **Start:** `docker compose up -d` (the certs from step 5 must be in `./certs` first, or
+   Traefik won't start).
+7. **GitHub secrets + protection** — add `DEPLOY_HOST` (box IP) and `DEPLOY_SSH_KEY`
    (deploy key private half), then turn on `main` branch protection. From here, merges to
    `main` deploy automatically.
+
+> **Optional hardening:** with Cloudflare proxying, lock origin `:443` to Cloudflare's
+> published IP ranges so nobody can reach the box by IP and bypass the proxy. (Signed
+> imgproxy URLs already prevent abuse, so this is defense-in-depth.)
 
 ## Adding a service
 
 1. Add a container to `compose.yaml` on the `edge` network with the four Traefik labels
-   (`enable`, router `rule=Host(...)`, `entrypoints=websecure`, `tls.certresolver=le`,
-   service `loadbalancer.server.port`).
-2. Point its subdomain's DNS at the box.
+   (`enable`, router `rule=Host(...)`, `entrypoints=websecure`, `tls=true`, service
+   `loadbalancer.server.port`).
+2. Point its subdomain's DNS (proxied) at the box. The `*.infra.coop` origin cert already
+   covers it — no per-service cert.
 3. PR it. Merge deploys it. No box surgery.
 
 ## Status

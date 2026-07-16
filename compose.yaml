@@ -19,18 +19,20 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      # File provider supplies the Cloudflare Origin Certificate (see dynamic/).
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.le.acme.tlschallenge=true
-      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
-      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./letsencrypt:/letsencrypt
+      # Cloudflare Origin Cert (not in git) + the dynamic TLS config that loads it.
+      - ./certs:/certs:ro
+      - ./dynamic:/etc/traefik/dynamic:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [edge]
 
@@ -63,7 +65,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.imgproxy.rule=Host(`${IMGPROXY_DOMAIN}`)
       - traefik.http.routers.imgproxy.entrypoints=websecure
-      - traefik.http.routers.imgproxy.tls.certresolver=le
+      - traefik.http.routers.imgproxy.tls=true
       - traefik.http.services.imgproxy.loadbalancer.server.port=8080
     # CPU-heavy, bursty tenant — capped so it can't starve neighbors.
     deploy:
