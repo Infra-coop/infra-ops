@@ -28,11 +28,13 @@ Each service has its own doc for why it exists and how to run it.
 | Service | Address | Role | Doc |
 |---|---|---|---|
 | imgproxy | `imgproxy.infra.coop` | Image transform backend for the image CDN | [docs/services/imgproxy.md](docs/services/imgproxy.md) |
+| jetstream | none (outbound only) | Purges the image CDN cache when an account is deleted | [docs/services/jetstream.md](docs/services/jetstream.md) |
 
 ## Files
 
 - `compose.yaml` is the stack (Traefik and the services).
 - `dynamic/tls.yml` is the Traefik config that loads the Cloudflare origin certificate.
+- `services/jetstream/` is the Jetstream consumer (a small Bun service and its Dockerfile).
 - `cloud-init.yaml` provisions a fresh box (Docker, a firewall, and a deploy user).
 - `scripts/host-setup.sh` preps an existing Docker box instead.
 - `scripts/gen-keys.sh` generates imgproxy's signing keys.
