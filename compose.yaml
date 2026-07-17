@@ -8,6 +8,9 @@ networks:
   edge:
     driver: bridge
 
+volumes:
+  jetstream-data:
+
 services:
   traefik:
     # Must be a build whose Docker client speaks API >= 1.40 — this droplet's
@@ -78,3 +81,17 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  jetstream:
+    # Watches the firehose for account deletions and purges the CDN cache.
+    # See docs/services/jetstream.md. No inbound, so no Traefik labels.
+    build: ./services/jetstream
+    restart: unless-stopped
+    environment:
+      PURGE_URL: ${PURGE_URL}
+      PURGE_TOKEN: ${PURGE_TOKEN}
+      JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream1.us-east.bsky.network/subscribe}
+      CURSOR_FILE: /data/cursor
+    volumes:
+      - jetstream-data:/data
+    networks: [edge]
